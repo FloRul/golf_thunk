@@ -8,14 +8,9 @@ import 'package:golf_thunk/models.dart';
 class GameCard extends StatefulWidget {
   final CardState cardState;
   final VoidCallback onTap;
-  final bool isPlayable; // Add this parameter
+  final bool isPlayable;
 
-  const GameCard({
-    super.key,
-    required this.cardState,
-    required this.onTap,
-    this.isPlayable = false, // Default to not playable
-  });
+  const GameCard({super.key, required this.cardState, required this.onTap, this.isPlayable = false});
 
   @override
   State<GameCard> createState() => _GameCardState();
@@ -23,11 +18,17 @@ class GameCard extends StatefulWidget {
 
 class _GameCardState extends State<GameCard> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  // New: Define a curved animation
+  late final Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
+    // Increase duration for a more pronounced animation
+    _controller = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
+    // New: Use an easeInOutBack curve for a nice "overshoot" effect
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOutBack);
+
     if (widget.cardState.isVisible) {
       _controller.value = 1;
     }
@@ -52,13 +53,16 @@ class _GameCardState extends State<GameCard> with SingleTickerProviderStateMixin
     final card = widget.cardState.card;
     return GestureDetector(
       onTap: widget.onTap,
+      // Change from AnimatedBuilder to listen to our new curved animation
       child: AnimatedBuilder(
-        animation: _controller,
+        animation: _animation, // Listen to the curved animation
         builder: (context, child) {
+          // Check the controller's value to determine if we should show the front or back
           final isFront = _controller.value < 0.5;
           final transform = Matrix4.identity()
             ..setEntry(3, 2, 0.001)
-            ..rotateY(pi * _controller.value);
+            // Use the curved animation's value for the rotation
+            ..rotateY(pi * _animation.value);
 
           return Transform(
             transform: transform,
@@ -95,7 +99,6 @@ class _GameCardState extends State<GameCard> with SingleTickerProviderStateMixin
   }
 
   Widget _buildCardFace(Color color, Widget child) {
-    // New: Add a glow effect when the card is playable
     final cardGlow = widget.isPlayable
         ? [BoxShadow(color: Colors.yellow.withOpacity(0.7), blurRadius: 10, spreadRadius: 3)]
         : null;
@@ -108,7 +111,7 @@ class _GameCardState extends State<GameCard> with SingleTickerProviderStateMixin
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8.0),
           border: widget.cardState.isVisible ? Border.all(color: Colors.blue, width: 2) : null,
-          boxShadow: cardGlow, // Apply the glow effect here
+          boxShadow: cardGlow,
         ),
         child: child,
       ),
